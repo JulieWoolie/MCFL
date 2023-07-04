@@ -1,0 +1,34 @@
+/*
+ * This is a test script made of random things, because I'm absolutely trash at testing
+ */
+
+$const const_value = true
+$let a_value = "const_value='$const_value'"
+
+tellraw @a "Hello, world!"
+tellraw @a "I can't believe this works lmao"
+
+$if (const_value) {
+  tellraw @a "Value was true"
+} $else {
+  tellraw @a "Value was false"
+}
+
+$test_function(true, false)
+$print("systemTime=", systemTimeMillis)
+
+# Will always be 0 lol
+$print("scriptTime=", scriptTime)
+
+$function test_function(asd1, asd2) {
+  tellraw @a "Function called"
+
+  $let value = innerFunction()
+  $print("innerFunction.result=", value)
+
+  $function innerFunction() {
+    tellraw @a "Inner function called"
+    $return false
+    $print("This should not be ran")
+  }
+}
