@@ -22,7 +22,7 @@ public class Scope extends BindingObject implements Bindings {
   }
 
   @Override
-  protected boolean canOverride(String name) {
+  public boolean canOverride(String name) {
     if (!super.canOverride(name)) {
       return false;
     }

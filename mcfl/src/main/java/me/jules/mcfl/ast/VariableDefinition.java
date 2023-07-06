@@ -16,21 +16,33 @@ public class VariableDefinition extends Statement {
   private Identifier name;
   private Expression value;
 
+  private boolean alreadyDefined = false;
+
   @Override
   public ReturnValue execute(ExecContext ctx, Scope scope) throws EvaluationError {
+    if (!scope.canOverride(name.getValue())) {
+      if (alreadyDefined) {
+        return ReturnValue.NO_RETURN;
+      }
+
+      throw new EvaluationError("Cannot redefine variable '" + name + "'", getPosition());
+    }
+
     ReturnValue varValue;
 
     if (this.value == null) {
       varValue = ReturnValue.NO_RETURN;
     } else {
       varValue = value.execute(ctx, scope);
+
+      if (varValue.kind() != Kind.RETURN_VALUE && varValue.kind() != Kind.RETURN_NONE) {
+        throw new EvaluationError("Invalid return value", value.getPosition());
+      }
     }
 
-    if (varValue.kind() != Kind.RETURN_VALUE && varValue.kind() != Kind.RETURN_NONE) {
-      throw new EvaluationError("Invalid return value", value.getPosition());
-    }
+    type.define(scope, ctx, name.getValue(), varValue.ref().value());
+    alreadyDefined = true;
 
-    type.define(scope, ctx, name.getValue(), varValue.ref());
     return ReturnValue.NO_RETURN;
   }
 

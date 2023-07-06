@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 import me.jules.mcfl.EvaluationError;
 import me.jules.mcfl.interpreter.ExecContext;
-import me.jules.mcfl.interpreter.InterpretUtils;
 import me.jules.mcfl.interpreter.ReturnValue;
 import me.jules.mcfl.interpreter.Scope;
 
@@ -18,7 +17,7 @@ public class IfStatement extends Statement {
   @Override
   public ReturnValue execute(ExecContext ctx, Scope scope) throws EvaluationError {
     ReturnValue conditionValue = condition.execute(ctx, scope);
-    boolean val = InterpretUtils.getBoolean(conditionValue.ref());
+    boolean val = conditionValue.ref().getBoolean();
 
     if (val) {
       return body.execute(ctx, scope);
@@ -31,6 +30,6 @@ public class IfStatement extends Statement {
 
   @Override
   public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {
-    return null;
+    return visitor.visitIf(this, context);
   }
 }

@@ -1,0 +1,6 @@
+$const string_1 = "FirstString_"
+$const string_2 = "_SecondString"
+
+$const string_3 = string_1 + string_2
+
+$debugger "string_3='$string_3'"

@@ -6,7 +6,11 @@ import lombok.Setter;
 @Getter @Setter
 public class ExecContext {
 
+  private String scriptName;
+
   private CommandExecutor executor;
 
   private Scope globalScope;
+
+  private DebugHandler debugHandler;
 }

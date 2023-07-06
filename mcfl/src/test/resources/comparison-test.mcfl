@@ -1,0 +1,9 @@
+$let x = 100
+$let y = 200
+
+$let x_lt_y = x < y
+$let x_gt_y = x > y
+$let x_gt_x = x > x
+$let x_gte_x = x >= x;
+
+$debugger "x=$x y=$y, x<y=$x_lt_y x>y=$x_gt_y x>x=$x_gt_x x>=x=$x_gte_x"

@@ -8,6 +8,7 @@ import me.jules.mcfl.EvaluationError;
 import me.jules.mcfl.ScriptCallable;
 import me.jules.mcfl.interpreter.Bindings;
 import me.jules.mcfl.interpreter.ExecContext;
+import me.jules.mcfl.interpreter.Utils;
 import me.jules.mcfl.interpreter.ReturnValue;
 import me.jules.mcfl.interpreter.Scope;
 import me.jules.mcfl.interpreter.ValueRef;
@@ -36,12 +37,7 @@ public class FunctionStatement extends Statement implements ScriptCallable {
   public ReturnValue call(ExecContext ctx, Scope scope, ValueRef[] params)
       throws EvaluationError
   {
-    if (params.length != parameters.size()) {
-      throw new EvaluationError(
-          "Parameter count mismatch when calling function '" + name.getValue() + "'"
-      );
-    }
-
+    Utils.ensureParamCount(params, parameters.size());
     Scope newScope = scope.newChild();
 
     for (int i = 0; i < parameters.size(); i++) {

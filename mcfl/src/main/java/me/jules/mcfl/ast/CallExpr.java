@@ -38,7 +38,14 @@ public class CallExpr extends Expression {
       params[i] = value.ref();
     }
 
-    return callable.call(context, scope, params);
+    try {
+      return callable.call(context, scope, params);
+    } catch (EvaluationError err) {
+      throw new EvaluationError(
+          "Error calling function " + target + ": " + err.getBaseMessage(),
+          getPosition()
+      );
+    }
   }
 
   @Override

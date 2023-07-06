@@ -1,0 +1,18 @@
+$const value_true = true
+
+$debugger "Value before: $value_true"
+$debugger "Value after: ${!value_true}"
+$debugger "Literal boolean negate: ${!true}"
+
+$let number = 1
+$debugger "Number value $number"
+$debugger "pre_inc: ${++number}, after: $number"
+
+$number = 1
+$debugger "pre_dec: ${--number}, after: $number"
+
+$number = 1
+$debugger "post_inc: ${number++}, after: $number"
+
+$number = 1
+$debugger "post_dec: ${number--}, after: $number"

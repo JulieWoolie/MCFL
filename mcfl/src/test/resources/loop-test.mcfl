@@ -1,0 +1,41 @@
+
+$debugger "Simple for loop begin"
+$for ($let i = 0; i < 10; i++) {
+
+  $if (i == 5) {
+    $debugger "Continuing at i=${i}"
+    $continue
+  }
+
+  $debugger "i=${i}"
+}
+$debugger "Simple for loop end"
+
+$debugger "Nested for loop begin"
+$outer: $for (let i = 0; i < 10; i++) {
+  $debugger "Outer loop, i=${i}"
+
+  $for ($let j = 0; j < 10; j++) {
+    $debugger "inner j value=${j}"
+
+    $if (j == 5) {
+      $debugger "inner j value == 5, continuing outer"
+      $continue outer
+    }
+  }
+
+  $debugger "After inner loop"
+}
+$debugger "Nested for loop end"
+
+$let runCount = 0
+$while (true) {
+  $runCount++
+
+  $if (runCount >= 10) {
+    $debugger "Breaking while loop"
+    $break
+  }
+
+  $debugger "While loop, runCount=$runCount"
+}

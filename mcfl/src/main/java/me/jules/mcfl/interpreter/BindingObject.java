@@ -29,7 +29,7 @@ public class BindingObject implements Bindings {
     propertyMap.put(name, property);
   }
 
-  protected boolean canOverride(String name) {
+  public boolean canOverride(String name) {
     return !containsValue(name);
   }
 

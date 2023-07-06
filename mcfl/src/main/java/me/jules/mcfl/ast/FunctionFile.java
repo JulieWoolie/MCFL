@@ -1,6 +1,9 @@
 package me.jules.mcfl.ast;
 
 import lombok.Getter;
+import me.jules.mcfl.EvaluationError;
+import me.jules.mcfl.interpreter.ExecContext;
+import me.jules.mcfl.interpreter.ReturnValue;
 import me.jules.mcfl.interpreter.Scope;
 
 @Getter
@@ -12,7 +15,7 @@ public class FunctionFile extends Block {
   }
 
   @Override
-  protected Scope createChild(Scope scope) {
-    return scope;
+  public ReturnValue execute(ExecContext ctx, Scope scope) throws EvaluationError {
+    return executeSameScope(ctx, scope);
   }
 }

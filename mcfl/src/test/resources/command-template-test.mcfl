@@ -1,0 +1,6 @@
+$const A_CONST = 12
+
+tellraw @a "$A_CONST"
+tellraw @a $A_CONST
+
+execute as @s run announce ${A_CONST}

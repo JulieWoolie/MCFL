@@ -2,11 +2,13 @@ package me.jules.mcfl.ast;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import me.jules.mcfl.interpreter.ExecContext;
 import me.jules.mcfl.interpreter.ReturnValue;
 import me.jules.mcfl.interpreter.Scope;
 
 @Getter @Setter
+@Accessors(fluent = true)
 public class BooleanLiteral extends Expression {
 
   private boolean value;

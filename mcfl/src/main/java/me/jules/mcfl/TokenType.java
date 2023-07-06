@@ -8,8 +8,8 @@ public enum TokenType {
 
   DOLLAR_SIGN         ("$"),
   COMMA               (","),
-  ASSIGN              ("="),
   SEMICOLON           (";"),
+  DOT                 ("."),
 
   LET                 ("$let"),
   CONST               ("$const"),
@@ -23,39 +23,50 @@ public enum TokenType {
   RETURN              ("$return"),
   BREAK               ("$break"),
   CONTINUE            ("$continue"),
-  DELETE              ("$delete"),
   DEBUGGER            ("$debugger"),
+  THROW               ("$throw"),
+  FOR                 ("$for"),
+  DO                  ("$do"),
+  WHILE               ("$while"),
 
-  // Yet to be implemented
-/*EQUALS              ("=="),
+  ASSIGN              ("="),
+  EQUALS              ("=="),
   N_EQUALS            ("!="),
   LT                  ("<"),
   LTE                 ("<="),
   GT                  (">"),
   GTE                 (">="),
-  SHIFT_LEFT          (">>"),
-  USHIFT_LEFT         (">>>"),
-  SHIFT_RIGHT         ("<<"),
-  USHIFT_RIGHT        ("<<<"),
+  SHIFT_LEFT          ("<<"),
+  USHIFT_LEFT         ("<<<"),
+  SHIFT_RIGHT         (">>"),
+  USHIFT_RIGHT        (">>>"),
+  MOD                 ("%"),
   POW                 ("**"),
   ADD                 ("+"),
   SUB                 ("-"),
   MUL                 ("*"),
   DIV                 ("/"),
+  OR                  ("|"),
+  XOR                 ("^"),
+  AND                 ("&"),
+  INVERT              ("~"),
+  NEGATE              ("!"),
+  INCREMENT           ("++"),
+  DECREMENT           ("--"),
 
-  ASSIGN_SHIFT_LEFT   (">>="),
-  ASSIGN_USHIFT_LEFT  (">>>="),
-  ASSIGN_SHIFT_RIGHT  ("<<="),
-  ASSIGN_USHIFT_RIGHT ("<<<="),
+  ASSIGN_SHIFT_LEFT   ("<<="),
+  ASSIGN_USHIFT_LEFT  ("<<<="),
+  ASSIGN_SHIFT_RIGHT  (">>="),
+  ASSIGN_USHIFT_RIGHT (">>>="),
+  ASSIGN_MOD          ("%="),
   ASSIGN_POW          ("**="),
   ASSIGN_ADD          ("+="),
   ASSIGN_SUB          ("-="),
   ASSIGN_MUL          ("*="),
   ASSIGN_DIV          ("/="),
-
-  NEGATE              ("!"),
-  INCREMENT           ("++"),
-  DECREMENT           ("--"),*/
+  ASSIGN_OR           ("|="),
+  ASSIGN_XOR          ("^="),
+  ASSIGN_AND          ("&="),
 
   PAREN_START         ("("),
   PAREN_CLOSE         (")"),
@@ -63,8 +74,20 @@ public enum TokenType {
   CURLY_CLOSE         ("}"),
 
   ID,
-  QUOTED_STRING,
-  COMMAND_STRING,
+  LOOP_LABEL,
+
+  NON_TEMPLATED_STRING,
+  TEMPLATE_STRING_HEAD,
+  TEMPLATE_STRING_PART,
+  TEMPLATE_STRING_TAIL,
+
+  NON_TEMPLATED_COMMAND,
+  TEMPLATE_CMD_HEAD,
+  TEMPLATE_CMD_PART,
+  TEMPLATE_CMD_TAIL,
+
+  TEMPLATE_EXPR_START ("${"),
+  TEMPLATE_ID_START ("$"),
 
   NUMBER,
   HEX,
@@ -73,7 +96,6 @@ public enum TokenType {
 
   EOF,
   UNKNOWN,
-  INVALID_COMMENT,
   ;
 
   public static final Map<String, TokenType> KEYWORDS;
@@ -93,8 +115,11 @@ public enum TokenType {
     map.put("true",        TRUE);
     map.put("false",       FALSE);
     map.put("null",        NULL);
-    map.put("delete",      DELETE);
     map.put("debugger",    DEBUGGER);
+    map.put("throw",       THROW);
+    map.put("for",         FOR);
+    map.put("do",          DO);
+    map.put("while",       WHILE);
 
     KEYWORDS = Collections.unmodifiableMap(map);
   }

@@ -52,6 +52,14 @@ public class ReturnValue {
     return new ReturnValue(kind, value);
   }
 
+  @Override
+  public String toString() {
+    return "ReturnValue{" +
+        "kind=" + kind +
+        ", ref=" + ref +
+        '}';
+  }
+
   public enum Kind {
     EMPTY,
     LOOP_BREAK,

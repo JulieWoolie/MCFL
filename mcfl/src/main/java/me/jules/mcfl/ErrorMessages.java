@@ -5,6 +5,10 @@ public final class ErrorMessages {
 
 
   public static String format(StringBuffer input, Location location, String message) {
+    if (location == null) {
+      return message;
+    }
+
     int pos = location.cursor();
 
     final int lineStart = findLineStart(input, pos);
@@ -17,7 +21,7 @@ public final class ErrorMessages {
         .replace("\n", "")
         .replace("\r", "");
 
-    String errorFormat = "%s\n%s\n%" + (column) + "s Line %s Column %s";
+    String errorFormat = "%s\n%s\n%" + (Math.max(1, column)) + "s Line %s Column %s";
 
     return errorFormat.formatted(message, context, "^", lineNumber, column);
   }
@@ -40,8 +44,8 @@ public final class ErrorMessages {
     while (r >= 0 && r < reader.length()) {
       char c = reader.charAt(r);
 
-      if (c == '\n' /*|| c == '\r'*/) {
-        return direction == -1 ? r + 1 : r;
+      if (c == '\n' || c == '\r') {
+        return r;
       }
 
       r += direction;

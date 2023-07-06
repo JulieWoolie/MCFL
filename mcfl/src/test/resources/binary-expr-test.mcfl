@@ -1,0 +1,29 @@
+$let x = 3
+$let y = 2
+
+$debugger "Test start, x=$x, y=$y"
+
+$debugger "operator + =${x+y}"
+$debugger "operator - =${x-y}"
+$debugger "operator / =${x/y}"
+$debugger "operator | =${x|y}"
+$debugger "operator & =${x&y}"
+$debugger "operator * =${x*y}"
+$debugger "operator ^ =${x**y}"
+
+$debugger "inverse x=${~x}"
+$debugger "inverse y=${~y}"
+
+$let xPlusY = x + y
+
+$if (xPlusY != 5) {
+  $throw "WRONG, interpreter got ${xPlusY}"
+} else {
+  $debugger "CORRECT"
+}
+
+$if ((x += y) != 5) {
+  $throw "Assignment += wrong, interpreter got ${x}"
+} $else {
+  $debugger "Assignment += correct"
+}

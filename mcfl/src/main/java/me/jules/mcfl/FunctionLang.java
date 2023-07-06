@@ -10,31 +10,37 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
-import java.util.StringJoiner;
 import me.jules.mcfl.ast.FunctionFile;
-import me.jules.mcfl.interpreter.ExecContext;
-import me.jules.mcfl.interpreter.InterpretUtils;
+import me.jules.mcfl.interpreter.Utils;
 import me.jules.mcfl.interpreter.ReturnValue;
 import me.jules.mcfl.interpreter.Scope;
 
 public class FunctionLang {
 
   public static final ScriptCallable PRINT = (ctx, scope, params) -> {
-    StringJoiner joiner = new StringJoiner("");
-
-    for (Object o: params) {
-      joiner.add(Objects.toString(o));
-    }
-
-    System.out.println(joiner);
+    String s = Utils.toString(params);
+    System.out.println(s);
     return ReturnValue.NO_RETURN;
+  };
+
+  public static final ScriptCallable FLOOR = (ctx, scope, params) -> {
+    Utils.ensureParamCount(params, 1);
+    double n = params[0].getDouble();
+    return ReturnValue.directWrap(Math.floor(n));
+  };
+
+  public static final ScriptCallable CEIL = (ctx, scope, params) -> {
+    Utils.ensureParamCount(params, 1);
+    double n = params[0].getDouble();
+    return ReturnValue.directWrap(Math.ceil(n));
   };
 
   public static Scope defineStandardScope() {
     Scope scope = new Scope();
 
     scope.defineValue("print", PRINT, FLAG_CONST);
+    scope.defineValue("floor", FLOOR, FLAG_CONST);
+    scope.defineValue("ceil",   CEIL, FLAG_CONST);
 
     scope.setProperty("systemTimeMillis", new SystemTimeProperty());
     scope.setProperty("scriptTime",       new ScriptTimeProperty());

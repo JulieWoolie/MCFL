@@ -2,6 +2,7 @@ package me.jules.mcfl.ast;
 
 import lombok.Getter;
 import lombok.Setter;
+import me.jules.mcfl.EvaluationError;
 import me.jules.mcfl.interpreter.ExecContext;
 import me.jules.mcfl.interpreter.ReturnValue;
 import me.jules.mcfl.interpreter.Scope;
@@ -9,7 +10,7 @@ import me.jules.mcfl.interpreter.Scope;
 @Getter @Setter
 public class CommandStatement extends Statement {
 
-  private String command;
+  private TemplatedString string;
 
   @Override
   public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {
@@ -17,13 +18,9 @@ public class CommandStatement extends Statement {
   }
 
   @Override
-  public ReturnValue execute(ExecContext ctx, Scope scope) {
-    ctx.getExecutor().runComand(command);
+  public ReturnValue execute(ExecContext ctx, Scope scope) throws EvaluationError {
+    String str = string.execute(ctx, scope);
+    ctx.getExecutor().runComand(str);
     return ReturnValue.NO_RETURN;
-  }
-
-  @Override
-  public String toString() {
-    return "'" + command + "'";
   }
 }

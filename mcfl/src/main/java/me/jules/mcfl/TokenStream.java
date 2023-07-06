@@ -1,23 +1,68 @@
 package me.jules.mcfl;
 
+import static me.jules.mcfl.TokenType.ADD;
+import static me.jules.mcfl.TokenType.AND;
 import static me.jules.mcfl.TokenType.ASSIGN;
+import static me.jules.mcfl.TokenType.ASSIGN_ADD;
+import static me.jules.mcfl.TokenType.ASSIGN_AND;
+import static me.jules.mcfl.TokenType.ASSIGN_DIV;
+import static me.jules.mcfl.TokenType.ASSIGN_MOD;
+import static me.jules.mcfl.TokenType.ASSIGN_MUL;
+import static me.jules.mcfl.TokenType.ASSIGN_OR;
+import static me.jules.mcfl.TokenType.ASSIGN_POW;
+import static me.jules.mcfl.TokenType.ASSIGN_SHIFT_LEFT;
+import static me.jules.mcfl.TokenType.ASSIGN_SHIFT_RIGHT;
+import static me.jules.mcfl.TokenType.ASSIGN_SUB;
+import static me.jules.mcfl.TokenType.ASSIGN_USHIFT_LEFT;
+import static me.jules.mcfl.TokenType.ASSIGN_USHIFT_RIGHT;
+import static me.jules.mcfl.TokenType.ASSIGN_XOR;
 import static me.jules.mcfl.TokenType.BINARY;
 import static me.jules.mcfl.TokenType.COMMA;
-import static me.jules.mcfl.TokenType.COMMAND_STRING;
 import static me.jules.mcfl.TokenType.CURLY_CLOSE;
 import static me.jules.mcfl.TokenType.CURLY_START;
+import static me.jules.mcfl.TokenType.DECREMENT;
+import static me.jules.mcfl.TokenType.DIV;
 import static me.jules.mcfl.TokenType.DOLLAR_SIGN;
+import static me.jules.mcfl.TokenType.DOT;
+import static me.jules.mcfl.TokenType.EQUALS;
+import static me.jules.mcfl.TokenType.GT;
+import static me.jules.mcfl.TokenType.GTE;
 import static me.jules.mcfl.TokenType.HEX;
 import static me.jules.mcfl.TokenType.ID;
+import static me.jules.mcfl.TokenType.INCREMENT;
+import static me.jules.mcfl.TokenType.INVERT;
+import static me.jules.mcfl.TokenType.LOOP_LABEL;
+import static me.jules.mcfl.TokenType.LT;
+import static me.jules.mcfl.TokenType.LTE;
+import static me.jules.mcfl.TokenType.MOD;
+import static me.jules.mcfl.TokenType.MUL;
+import static me.jules.mcfl.TokenType.NEGATE;
+import static me.jules.mcfl.TokenType.NON_TEMPLATED_COMMAND;
+import static me.jules.mcfl.TokenType.NON_TEMPLATED_STRING;
 import static me.jules.mcfl.TokenType.NUMBER;
+import static me.jules.mcfl.TokenType.N_EQUALS;
 import static me.jules.mcfl.TokenType.OCTAL;
+import static me.jules.mcfl.TokenType.OR;
 import static me.jules.mcfl.TokenType.PAREN_CLOSE;
 import static me.jules.mcfl.TokenType.PAREN_START;
-import static me.jules.mcfl.TokenType.QUOTED_STRING;
+import static me.jules.mcfl.TokenType.POW;
 import static me.jules.mcfl.TokenType.SEMICOLON;
+import static me.jules.mcfl.TokenType.SHIFT_LEFT;
+import static me.jules.mcfl.TokenType.SHIFT_RIGHT;
+import static me.jules.mcfl.TokenType.SUB;
+import static me.jules.mcfl.TokenType.TEMPLATE_CMD_HEAD;
+import static me.jules.mcfl.TokenType.TEMPLATE_CMD_PART;
+import static me.jules.mcfl.TokenType.TEMPLATE_CMD_TAIL;
+import static me.jules.mcfl.TokenType.TEMPLATE_EXPR_START;
+import static me.jules.mcfl.TokenType.TEMPLATE_ID_START;
+import static me.jules.mcfl.TokenType.TEMPLATE_STRING_HEAD;
+import static me.jules.mcfl.TokenType.TEMPLATE_STRING_PART;
+import static me.jules.mcfl.TokenType.TEMPLATE_STRING_TAIL;
 import static me.jules.mcfl.TokenType.UNKNOWN;
+import static me.jules.mcfl.TokenType.USHIFT_LEFT;
+import static me.jules.mcfl.TokenType.USHIFT_RIGHT;
+import static me.jules.mcfl.TokenType.XOR;
 
-import java.util.Objects;
 import java.util.function.IntPredicate;
 
 public class TokenStream {
@@ -25,6 +70,13 @@ public class TokenStream {
   public static final int EOF     = -1;
   public static final int NO_CHAR = -2;
   public static final int LF = '\n';
+
+  public static final int TEMPLATE_CHAR = '$';
+
+  public static final int NOT_IN_TEMPLATE = -2;
+  public static final int TP_NONE = -1;
+  public static final int TP_ID = 0;
+  public static final int TP_EXPR = 1;
 
   private final StringBuffer input;
 
@@ -39,14 +91,47 @@ public class TokenStream {
   private Location tokenLocation;
   private Token peekedToken;
 
-  StringBuffer readbuf = new StringBuffer();
+  private final StringBuffer readbuf = new StringBuffer();
+
+  // Used in debugging to know where the heck this reader is at in the input
+  private final StringBuffer contextBuffer = new StringBuffer();
+
+  boolean commandsForbidden = false;
+
+  private boolean insideQuotedString;
+  private int quoteChar = EOF;
+
+  private boolean insideCommand;
+  private boolean insideTemplate;
+  private int templateType = NOT_IN_TEMPLATE;
 
   public TokenStream(StringBuffer input) {
     this.input = input;
     this.errors = new Errors(input);
 
+    normalizeNewline(input);
+
     cursor = -1;
     advance();
+  }
+
+  private static void normalizeNewline(StringBuffer buf) {
+    int cursor = 0;
+
+    while (cursor < buf.length()) {
+      char ch = buf.charAt(cursor);
+
+      if (ch == '\r') {
+        buf.setCharAt(cursor, (char) LF);
+        int nIndex = cursor + 1;
+
+        if (cursor < buf.length() - 1 && buf.charAt(nIndex) == LF) {
+          buf.deleteCharAt(nIndex);
+        }
+      }
+
+      cursor++;
+    }
   }
 
   public StringBuffer input() {
@@ -55,14 +140,6 @@ public class TokenStream {
 
   public Location location() {
     return new Location(line, col, cursor);
-  }
-
-  public void setLocation(Location loc) {
-    Objects.requireNonNull(loc);
-
-    this.cursor = loc.cursor();
-    this.line = loc.line();
-    this.col = loc.column();
   }
 
   public int peek() {
@@ -108,7 +185,27 @@ public class TokenStream {
     cursor = nCursor;
     currentChar = nChar;
 
+    remakeContextBuffer();
+
     return currentChar;
+  }
+
+  private void remakeContextBuffer() {
+    int cMin = Math.max(0, cursor - 10);
+    int cMax = Math.min(input.length(), cursor + 10);
+
+    if (!contextBuffer.isEmpty()) {
+      contextBuffer.delete(0, contextBuffer.length());
+    }
+
+    for (int i = cMin; i < cMax; i++) {
+      if (i == cursor) {
+        contextBuffer.append('|');
+      }
+
+      int ch = charAt(i);
+      contextBuffer.appendCodePoint(ch);
+    }
   }
 
   private void clearReadbuf() {
@@ -174,155 +271,10 @@ public class TokenStream {
       advance();
 
       if (currentChar == '*' && peek() == '/') {
-        advance();
-        advance();
-
+        advance(2);
         break;
       }
     }
-  }
-
-  private String readCommandString() {
-    skipIgnorable();
-    if (currentChar == ';') {
-      advance();
-    }
-
-    skipIgnorable();
-    clearReadbuf();
-
-    boolean escaped = false;
-
-    while (currentChar != EOF && currentChar != LF) {
-      if (currentChar == '\\') {
-        if (escaped) {
-          readbuf.append("\\");
-        }
-
-        escaped = true;
-        advance();
-        continue;
-      }
-
-      if (currentChar == ';') {
-        if (escaped) {
-          readbuf.append(";");
-          advance();
-          escaped = false;
-          continue;
-        }
-
-        advance();
-        break;
-      }
-
-      if (escaped) {
-        readbuf.append("\\");
-        escaped = false;
-      }
-
-      readbuf.appendCodePoint(currentChar);
-      advance();
-    }
-
-    if (escaped) {
-      readbuf.append("\\");
-    }
-
-    return readbuf.toString();
-  }
-
-  private String readQuotedString() {
-    int quoted = currentChar;
-
-    if (quoted != '"' && quoted != '`' && quoted != '\'') {
-      errors.error(location(), "Invalid quote %c", quoted);
-    }
-
-    advance();
-    clearReadbuf();
-
-    boolean escaped = false;
-
-    while (true) {
-
-      if (currentChar == EOF) {
-        errors.error(location(), "End-Of-File inside quoted string");
-      }
-
-      if (currentChar == LF) {
-        errors.error(location(), "Line break inside quoted string");
-      }
-
-      if (currentChar == '\\') {
-        advance();
-
-        if (escaped) {
-          readbuf.append("\\");
-          escaped = false;
-          continue;
-        }
-
-        escaped = true;
-        continue;
-      }
-
-      if (currentChar == quoted) {
-        advance();
-
-        if (escaped) {
-          escaped = false;
-          readbuf.appendCodePoint(quoted);
-          continue;
-        }
-
-        break;
-      }
-
-      if (escaped) {
-        switch (currentChar) {
-          case 'u' -> {
-            int unicode = readUnicodeCharacter();
-            readbuf.appendCodePoint(unicode);
-          }
-
-          case 'n' -> readbuf.append("\n");
-          case 'r' -> readbuf.append("\r");
-          case 't' -> readbuf.append("\t");
-          case 'b' -> readbuf.append("\b");
-          case 'f' -> readbuf.append("\f");
-
-          default -> {
-            errors.error(location(), "Invalid escape character");
-            advance();
-          }
-        }
-
-        escaped = false;
-        continue;
-      }
-
-      readbuf.appendCodePoint(currentChar);
-      advance();
-    }
-
-    return readbuf.toString();
-  }
-
-  private int readUnicodeCharacter() {
-    StringBuffer buf = new StringBuffer();
-    Location start = location();
-
-    while (isHexChar(currentChar)) {
-      buf.appendCodePoint(currentChar);
-      advance();
-    }
-
-    if (buf.length() < 4) {
-      errors.error(start, "Invalid unicode sequence (must be 4 hex characters)");
-    }
-
-    return Integer.parseUnsignedInt(buf, 0, 4, 16);
   }
 
 
@@ -496,6 +448,35 @@ public class TokenStream {
   }
 
   private Token readToken() {
+    if (!insideTemplate) {
+      if (insideQuotedString) {
+        return readQuotedString(false);
+      } else if (insideCommand) {
+        return readCommand(false);
+      }
+    } else if (templateType == TP_ID) {
+      tokenLocation = location();
+      String id = readIdentifier();
+
+      if (id.isEmpty()) {
+        errors.error(location(), "Expected template character '$' to be followed by identifier");
+      }
+
+      TokenType type = findKeyword(id);
+      Token t;
+
+      if (type != null) {
+        t = token(type);
+      } else {
+        t = token(ID, id);
+      }
+
+      templateType = NOT_IN_TEMPLATE;
+      insideTemplate = false;
+
+      return t;
+    }
+
     skipIgnorable();
     tokenLocation = location();
 
@@ -505,23 +486,223 @@ public class TokenStream {
 
     return switch (currentChar) {
       case '{' -> singleCharToken(CURLY_START);
-      case '}' -> singleCharToken(CURLY_CLOSE);
       case '(' -> singleCharToken(PAREN_START);
       case ')' -> singleCharToken(PAREN_CLOSE);
       case ',' -> singleCharToken(COMMA);
-      case '=' -> singleCharToken(ASSIGN);
-      case '$' -> singleCharToken(DOLLAR_SIGN);
+      case '.' -> singleCharToken(DOT);
       case ';' -> singleCharToken(SEMICOLON);
+      case '~' -> singleCharToken(INVERT);
+
+      case '!' -> charOrAssign(NEGATE, N_EQUALS);
+      case '=' -> charOrAssign(ASSIGN, EQUALS);
+
+      case '^' -> charOrAssign(XOR, ASSIGN_XOR);
+      case '/' -> charOrAssign(DIV, ASSIGN_DIV);
+      case '%' -> charOrAssign(MOD, ASSIGN_MOD);
+
+      case '}' -> {
+        if (insideTemplate) {
+          insideTemplate = false;
+          templateType = NOT_IN_TEMPLATE;
+        }
+        yield singleCharToken(CURLY_CLOSE);
+      }
+
+      case '$' -> {
+        advance();
+
+        if (templateType == TP_NONE) {
+          insideTemplate = true;
+
+          if (currentChar == '{') {
+            advance();
+            templateType = TP_EXPR;
+            yield token(TEMPLATE_EXPR_START);
+          }
+
+          templateType = TP_ID;
+          yield token(TEMPLATE_ID_START);
+        }
+
+        String id = readIdentifier();
+
+        if (id.isEmpty()) {
+          yield token(DOLLAR_SIGN);
+        }
+
+        yield identifierToken(id);
+      }
+
+      case '*' -> {
+        advance();
+
+        if (currentChar == '*') {
+          advance();
+
+          if (currentChar == '=') {
+            yield token(ASSIGN_POW);
+          }
+
+          yield token(POW);
+        }
+
+        if (currentChar == '=') {
+          advance();
+          yield token(ASSIGN_MUL);
+        }
+
+        yield token(MUL);
+      }
+
+      case '+' -> {
+        advance();
+
+        if (currentChar == '+') {
+          advance();
+          yield token(INCREMENT);
+        }
+
+        if (currentChar == '=') {
+          advance();
+          yield token(ASSIGN_ADD);
+        }
+
+        yield token(ADD);
+      }
+
+      case '-' -> {
+        advance();
+
+        if (currentChar == '-') {
+          advance();
+          yield token(DECREMENT);
+        }
+
+        if (currentChar == '=') {
+          advance();
+          yield token(ASSIGN_SUB);
+        }
+
+        yield token(SUB);
+      }
+
+      case '|' -> {
+        advance();
+
+        if (currentChar == '|') {
+          advance();
+
+          if (currentChar == '=') {
+            advance();
+            yield token(ASSIGN_OR);
+          }
+
+          yield token(OR);
+        }
+
+        if (currentChar == '=') {
+          advance();
+          yield token(ASSIGN_OR);
+        }
+
+        yield token(OR);
+      }
+
+      case '&' -> {
+        advance();
+
+        if (currentChar == '&') {
+          advance();
+
+          if (currentChar == '=') {
+            advance();
+            yield token(ASSIGN_AND);
+          }
+
+          yield token(AND);
+        }
+
+        if (currentChar == '=') {
+          advance();
+          yield token(ASSIGN_AND);
+        }
+
+        yield token(AND);
+      }
+
+      case '<' -> {
+        advance();
+
+        if (currentChar == '<') {
+          advance();
+
+          if (currentChar == '=') {
+            advance();
+            yield token(ASSIGN_SHIFT_LEFT);
+          }
+
+          if (currentChar == '<') {
+            advance();
+
+            if (currentChar == '=') {
+              advance();
+              yield token(ASSIGN_USHIFT_LEFT);
+            }
+
+            yield token(USHIFT_LEFT);
+          }
+
+          yield token(SHIFT_LEFT);
+        }
+
+        if (currentChar == '=') {
+          advance();
+          yield token(LTE);
+        }
+
+        yield token(LT);
+      }
+
+      case '>' -> {
+        advance();
+
+        if (currentChar == '>') {
+          advance();
+
+          if (currentChar == '=') {
+            advance();
+            yield token(ASSIGN_SHIFT_RIGHT);
+          }
+
+          if (currentChar == '>') {
+            advance();
+
+            if (currentChar == '=') {
+              advance();
+              yield token(ASSIGN_USHIFT_RIGHT);
+            }
+
+            yield token(USHIFT_RIGHT);
+          }
+
+          yield token(SHIFT_RIGHT);
+        }
+
+        if (currentChar == '=') {
+          advance();
+          yield token(GTE);
+        }
+
+        yield token(GT);
+      }
 
       case '`', '\'', '"' -> {
-        String str = readQuotedString();
-        yield token(QUOTED_STRING, str);
+        yield readQuotedString(true);
       }
 
       default -> {
         if (canBeCommandString()) {
-          String str = readCommandString();
-          yield token(COMMAND_STRING, str);
+          yield readCommand(true);
         }
 
         if (isNumberStart(currentChar)) {
@@ -533,23 +714,98 @@ public class TokenStream {
     };
   }
 
+  private Token readQuotedString(boolean beginning) {
+    if (beginning) {
+      int quoted = currentChar;
+
+      if (quoted != '"' && quoted != '`' && quoted != '\'') {
+        errors.error(location(), "Invalid quote %c", quoted);
+      }
+
+      advance();
+
+      quoteChar = quoted;
+      insideQuotedString = true;
+    }
+
+    String str = readUntilQuoteOrTemplate();
+
+    if (currentChar == TEMPLATE_CHAR) {
+      insideTemplate = true;
+      templateType = TP_NONE;
+
+      if (beginning) {
+        return token(TEMPLATE_STRING_HEAD, str);
+      } else {
+        return token(TEMPLATE_STRING_PART, str);
+      }
+    } else if (currentChar != quoteChar) {
+      // ??????
+      errors.error(location(), "Invalid string stop");
+    }
+
+    advance();
+    insideQuotedString = false;
+    quoteChar = EOF;
+
+    if (beginning) {
+      return token(NON_TEMPLATED_STRING, str);
+    } else {
+      return token(TEMPLATE_STRING_TAIL, str);
+    }
+  }
+
+  private Token readCommand(boolean beginning) {
+    if (beginning) {
+      skipIgnorable();
+      if (currentChar == ';') {
+        advance();
+      }
+
+      skipIgnorable();
+      insideCommand = true;
+    }
+
+    String str = readCommandPart();
+
+    if (currentChar == TEMPLATE_CHAR) {
+      insideTemplate = true;
+      templateType = TP_NONE;
+
+      if (beginning) {
+        return token(TEMPLATE_CMD_HEAD, str);
+      } else {
+        return token(TEMPLATE_CMD_PART, str);
+      }
+    } else if (!isCommandEnd(currentChar)) {
+      //?????
+      errors.error(location(), "Invalid command end");
+    }
+
+    insideCommand = false;
+    advance();
+
+    if (beginning) {
+      return token(NON_TEMPLATED_COMMAND, str);
+    } else {
+      return token(TEMPLATE_CMD_TAIL, str);
+    }
+  }
+
   private boolean canBeCommandString() {
+    if (commandsForbidden) {
+      return false;
+    }
+
     int lineStart = findLineStart();
-    int lineEnd = ErrorMessages.findLineEnd(input, cursor);
+    int cursor = this.cursor;
 
-    String substr = input.substring(lineStart, lineEnd).trim();
-
-    if (substr.isEmpty()) {
-      return false;
+    if (lineStart == cursor) {
+      return true;
     }
 
-    char first = substr.charAt(0);
-
-    if (first == '$') {
-      return false;
-    }
-
-    return first == '/' || Character.isJavaIdentifierPart(first);
+    String substring = input.substring(lineStart, cursor);
+    return substring.isBlank();
   }
 
   int findLineStart() {
@@ -566,6 +822,181 @@ public class TokenStream {
     }
 
     return Math.max(0, r);
+  }
+
+  private static boolean isCommandEnd(int ch) {
+    return ch == LF || ch == EOF || ch == ';';
+  }
+
+  private String readCommandPart() {
+    clearReadbuf();
+
+    boolean escaped = false;
+
+    while (currentChar != EOF && currentChar != LF) {
+      if (currentChar == '\\') {
+        if (escaped) {
+          readbuf.append("\\");
+        }
+
+        escaped = true;
+        advance();
+        continue;
+      }
+
+      if (currentChar == ';') {
+        if (escaped) {
+          readbuf.append(";");
+          advance();
+          escaped = false;
+          continue;
+        }
+
+        advance();
+        break;
+      }
+
+      if (currentChar == TEMPLATE_CHAR) {
+        if (escaped) {
+          readbuf.appendCodePoint(TEMPLATE_CHAR);
+          escaped = false;
+          advance();
+          continue;
+        }
+
+        int peek = peek();
+
+        if (peek == '{' || Character.isJavaIdentifierStart(peek)) {
+          break;
+        }
+      }
+
+      if (escaped) {
+        readbuf.append("\\");
+        escaped = false;
+      }
+
+      readbuf.appendCodePoint(currentChar);
+      advance();
+    }
+
+    if (escaped) {
+      readbuf.append("\\");
+    }
+
+    return readbuf.toString();
+  }
+
+  private String readUntilQuoteOrTemplate() {
+    clearReadbuf();
+    boolean escaped = false;
+
+    Location start = location();
+
+    while (true) {
+
+      if (currentChar == EOF) {
+        errors.error(location(), "End-Of-File inside quoted string");
+      }
+
+      if (currentChar == LF) {
+        errors.error(start, "Line break inside quoted string");
+      }
+
+      if (currentChar == '\\') {
+        advance();
+
+        if (escaped) {
+          readbuf.append("\\");
+          escaped = false;
+          continue;
+        }
+
+        escaped = true;
+        continue;
+      }
+
+      if (currentChar == quoteChar) {
+        if (escaped) {
+          escaped = false;
+          readbuf.appendCodePoint(quoteChar);
+          advance();
+          continue;
+        }
+
+        break;
+      }
+
+      if (currentChar == TEMPLATE_CHAR) {
+        if (escaped) {
+          readbuf.appendCodePoint(TEMPLATE_CHAR);
+          escaped = false;
+          advance();
+          continue;
+        }
+
+        int peek = peek();
+
+        if (peek == '{' || Character.isJavaIdentifierStart(peek)) {
+          break;
+        }
+      }
+
+      if (escaped) {
+        switch (currentChar) {
+          case 'u' -> {
+            int unicode = readUnicodeCharacter();
+            readbuf.appendCodePoint(unicode);
+          }
+
+          case 'n' -> readbuf.append("\n");
+          case 'r' -> readbuf.append("\r");
+          case 't' -> readbuf.append("\t");
+          case 'b' -> readbuf.append("\b");
+          case 'f' -> readbuf.append("\f");
+
+          default -> {
+            errors.error(location(), "Invalid escape character");
+            advance();
+          }
+        }
+
+        escaped = false;
+        continue;
+      }
+
+      readbuf.appendCodePoint(currentChar);
+      advance();
+    }
+
+    return readbuf.toString();
+  }
+
+  private int readUnicodeCharacter() {
+    StringBuffer buf = new StringBuffer();
+    Location start = location();
+
+    while (isHexChar(currentChar)) {
+      buf.appendCodePoint(currentChar);
+      advance();
+    }
+
+    if (buf.length() < 4) {
+      errors.error(start, "Invalid unicode sequence (must be 4 hex characters)");
+    }
+
+    return Integer.parseUnsignedInt(buf, 0, 4, 16);
+  }
+
+  private Token charOrAssign(TokenType lone, TokenType assign) {
+    advance();
+
+    if (currentChar == '=') {
+      advance();
+      return token(assign);
+    }
+
+    return token(lone);
   }
 
   private Token numberToken() {
@@ -603,9 +1034,18 @@ public class TokenStream {
       return token(UNKNOWN);
     }
 
+    return identifierToken(id);
+  }
+
+  private Token identifierToken(String id) {
     TokenType keyword = findKeyword(id);
     if (keyword != null) {
       return token(keyword);
+    }
+
+    if (currentChar == ':') {
+      advance();
+      return token(LOOP_LABEL, id);
     }
 
     return token(ID, id);

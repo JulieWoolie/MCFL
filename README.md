@@ -1,4 +1,4 @@
-# Minecraft Function Language (In development)
+# Minecraft Function Language (Not affiliated with Mojang, hobby project)
 Minecraft Function Lang, a basic scripting language for minecraft
   
 This project isn't intended to be used anywhere, just a hobby project to create
@@ -7,44 +7,107 @@ which is literally just a command list with comment support
   
 Note: The parser uses '$' to differentiate between regular command lines
 and statements/expressions
+  
+PS, do not expect this to be an ultra-fast implementation of a scripting language,
+this is just a hobby project that works with an interpreter
 
 ## TODO
 1. [X] Lexer
 2. [X] Parser
 3. [x] If statements
 4. [x] Functions
-5. [ ] Loops (`$for` and `$while`)
-6. [ ] Operators
-    1. [ ] add (`+`)
-    2. [ ] sub (`-`)
-    3. [ ] div (`/`)
-    4. [ ] mul (`*`)
-    5. [ ] pow (`x**y`)
-    6. [ ] or (`|`) 
-    7. [ ] and (`&`) 
-    8. [ ] xor (`^`) 
-    9. [ ] negate (`!`) 
-    10. [ ] bitwise negate (`~`)
-7. [ ] String templating (`$bindingIdentifier` and `${expression}`) for both commands and quoted strings
-8. [ ] Accessing properties on objects and calling methods
+5. [X] Loops (`$for` and `$while`)
+6. [x] Operators
+    1. [x] add (`+`)
+    2. [x] sub (`-`)
+    3. [x] div (`/`)
+    4. [x] mul (`*`)
+    5. [x] pow (`x**y`)
+    6. [x] or (`|`) 
+    7. [x] and (`&`) 
+    8. [x] xor (`^`) 
+    9. [x] negate (`!`) 
+    10. [x] bitwise negate (`~`)
+7. [X] String templating (`$bindingIdentifier` and `${expression}`) for both commands and quoted strings
+8. [X] Accessing properties on objects and calling methods
 9. [ ] PaperMC support (Currently just a parser and interpreter)
 
-## Syntax Example
-```txt
-# This is a comment
-tellraw @a "Hello, world!"
+## Features
+Completely backwards compatible with `.mcfunction` files
+  
+Support for all operators found in hava
+```text
+$let x = 10
+$let y = 20
 
-/* This is also a comment. These 2 lines below will call the methods */
-$a_function()
-$another_function()
+$print(-x)
+$print(+x)
+$print(++x)
+$print(--x)
+$print(x--)
+$print(x++)
+$print(x + y)
+$print(x - y)
+$print(x * y)
+$print(x / y)
+$print(x | y)
+$print(x & y)
+$print(x % y)
+$print(x << y)
+$print(x < y)
+$print(x > y)
+$print(x >= y)
+$print(x <= y)
+$print(x <<< y)
+$print(x >> y)
+$print(x >>> y)
+```
+String and command templating
+```text
+$const const_value = 12
+$const other_const = 13
 
-$function a_function() {
-  $print("I've been called!")
-  $return true
+# Final result will be 'tellraw @a {"text":"25"}' 
+tellraw @a {"text":"${const_value + other_const}"}
+
+# Final result will be "const_value+other_const = 25"
+$const const_string = "const_value+other_const = ${const_value + other_const}"
+```
+Run commands alongside statements and expressions
+```text
+$const MAX_TICKS = 200
+
+$global-let tickCount = 0
+$tickCount++
+
+$if (tickCount >= MAX_TICKS) {
+  tellraw @a {"text":"Timer has ended, kicking all players out of arena","color":"green","bold":true}
+  teleport @a[x=0,y=75,z=0,distance=..20] 51.5 80 51.5
 }
 
-$function another_function() {
-  $print("I've also been called!")
+schedule("1t")
+```
+`for`, `while` and `do {} while ()` loops
+```text
+#FizzBuzz
+
+$let output = ""
+
+$for ($let i = 0; i < 100; i++) {
+  $if (i % 3 == 0) {
+    $output += "Fizz"
+  }
+  
+  $if (i % 5 == 0) {
+    $output += "Buzz"
+  }
+  
+  $if (output == "") {
+    $output = i
+  }
+  
+  tellraw @a "${output}"
+  $output = ""
 }
 ```
 

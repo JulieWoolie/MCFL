@@ -1,0 +1,51 @@
+/*
+ * This is a test script made of random things, because I'm absolutely trash at testing
+ */
+
+$const const_value = true
+$let a_value = "const_value='${const_value}'"
+$const NUMBER = 456.5746e+2
+
+$debugger "NUMBER=${NUMBER}"
+
+tellraw @a "Hello, world!!"
+tellraw @a "I can't believe this works lmao"
+tellraw @a "message=${simpleFunction()}"
+
+$function announce(message) {
+  tellraw @a "$message"
+}
+
+$function simpleFunction() {
+  $debugger "simpleFunction called!"
+  $return true
+}
+
+$if (const_value) {
+  tellraw @a "Value was true"
+} $else {
+  tellraw @a "Value was false"
+}
+
+$test_function(true, false)
+
+$debugger "systemTime=$systemTimeMillis"
+$debugger "scriptTime=$scriptTime"
+
+$debugger "false==false: ${false == false}"
+
+$function test_function(asd1, asd2) {
+  tellraw @a "Function called"
+
+  $debugger "asd1=$asd1"
+  $debugger "asd2=$asd2"
+
+  $let value = innerFunction()
+  $debugger "innerFunction.result=$value"
+
+  $function innerFunction() {
+    tellraw @a "Inner function called"
+    $return false
+    $debugger "This should not be ran"
+  }
+}
